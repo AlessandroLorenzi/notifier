@@ -1,20 +1,19 @@
 # Notifier
 
-Un dispositivo basato su ESP32-S3 che mostra ora, temperatura e umidità su un display
-e-paper da 1.54", pubblica i dati via MQTT per Home Assistant, e segnala alert
-da Uptime Kuma.
+ESP32-S3 device that displays time, temperature, and humidity on a 1.54" e-paper screen,
+publishes sensor data via MQTT for Home Assistant, and shows Uptime Kuma alerts.
 
 ## Hardware
 
-| Componente | Modello |
+| Component | Model |
 | --- | --- |
-| Microcontrollore | ESP32-S3 |
+| MCU | ESP32-S3 |
 | Display | Waveshare 1.54" e-paper (GxEPD2_154_D67) |
-| Sensore T/U | SHTC3 (I2C) |
+| Sensor | SHTC3 (I2C) |
 
 ### Pinout
 
-| Segnale | Pin ESP32-S3 |
+| Signal | ESP32-S3 pin |
 | --- | --- |
 | EPD DC | 10 |
 | EPD CS | 11 |
@@ -27,23 +26,22 @@ da Uptime Kuma.
 | I2C SDA | 47 |
 | I2C SCL | 48 |
 
-## Funzionamento
+## How it works
 
-Ad ogni ciclo (ogni 60 secondi):
+Every 60 seconds:
 
-1. Legge temperatura e umidità dal sensore SHTC3
-2. Si connette al WiFi e sincronizza l'ora via NTP (fuso orario CET/CEST)
-3. Pubblica i dati su MQTT con auto-discovery per Home Assistant
-4. Controlla i feed RSS di Uptime Kuma per rilevare monitor down
-5. Aggiorna il display: mostra temperatura/umidità in condizioni normali, o un alert con il nome del monitor down
-6. Entra in light sleep per 60 secondi
+1. Reads temperature and humidity from the SHTC3 sensor
+2. Connects to WiFi and syncs time via NTP (CET/CEST timezone)
+3. Publishes sensor data via MQTT with Home Assistant auto-discovery
+4. Fetches Uptime Kuma RSS feeds to detect any down services
+5. Updates the display: shows temp/humidity normally, or an alert if a service is down
+6. Enters light sleep for 60 seconds
 
-Il display esegue un full refresh ogni 10 cicli per prevenire il ghosting;
-negli altri cicli usa il partial refresh per maggiore velocità.
+A full e-paper refresh runs every 10 cycles to prevent ghosting; other cycles use partial refresh.
 
-## Configurazione
+## Configuration
 
-Copia `config.h.example` in `config.h` e compila i valori:
+Copy `config.h.example` to `config.h` and fill in your values:
 
 ```cpp
 // WiFi
@@ -54,86 +52,83 @@ Copia `config.h.example` in `config.h` e compila i valori:
 #define MQTT_HOST      "192.168.1.x"
 #define MQTT_PORT      1883
 #define MQTT_CLIENT_ID "notifier"
-#define MQTT_USER      ""   // lascia vuoto se non richiesto
+#define MQTT_USER      ""   // leave empty if not required
 #define MQTT_PASS      ""
-
-// Uptime Kuma
-#define UPTIME_RSS_CASAVO  "https://uptime.casavo.com/status/casavo/rss"
-#define UPTIME_RSS_HOME    "https://uptime.alorenzi.eu/status/home/rss"
 ```
 
-> `config.h` è ignorato da git. Non committare mai le credenziali.
+> `config.h` is git-ignored. Never commit credentials.
 
-## Dipendenze (librerie Arduino)
+## Dependencies
 
-Installa con `make install-libs` oppure manualmente:
+Install with `make install-libs` or manually:
 
-```txt
+```text
 GxEPD2
 Adafruit SHTC3 Library
 PubSubClient
 ```
 
-## Build e flash
+`HTTPClient` and `WiFiClientSecure` are bundled with the ESP32 Arduino core — no extra install needed.
 
-Richiede [arduino-cli](https://arduino.github.io/arduino-cli/).
+## Build and flash
+
+Requires [arduino-cli](https://arduino.github.io/arduino-cli/).
 
 ```bash
-make compile          # compila
-make upload           # flasha su /dev/ttyACM0
+make compile          # compile
+make upload           # flash to /dev/ttyACM0
 make all              # compile + upload
-make monitor          # apre il monitor seriale (115200 baud)
-make board-list       # lista le schede connesse
-make install-libs     # installa le librerie necessarie
+make monitor          # open serial monitor (115200 baud, quit with Ctrl+])
+make board-list       # list connected boards
+make install-libs     # install required libraries
 ```
 
-Override opzionali:
+Optional overrides:
 
 ```bash
 make upload PORT=/dev/ttyUSB0
 make compile FQBN=esp32:esp32:esp32s3
 ```
 
+The serial monitor uses `python3 -m serial.tools.miniterm`. After flashing, physically
+reset the board to catch output from boot.
+
 ## Uptime Kuma
 
-Ad ogni ciclo vengono controllati due feed RSS:
+Two RSS feeds are checked every cycle:
 
 | Define | URL |
 | --- | --- |
 | `UPTIME_RSS_CASAVO` | `https://uptime.casavo.com/status/casavo/rss` |
 | `UPTIME_RSS_HOME` | `https://uptime.alorenzi.eu/status/home/rss` |
 
-Il rilevamento si basa sul formato nativo di Uptime Kuma: se la `<description>` del
-canale contiene `Current status: Degraded Service`, viene cercato il primo item il cui
-titolo segue il pattern `<nome> is down`. Il nome viene estratto dinamicamente, quindi
-non serve configurare nulla se cambiano i monitor.
+Detection uses Uptime Kuma's native RSS format: if the channel `<description>` contains
+`Current status: Degraded Service`, the feed items are scanned for the first title matching
+`<name> is down`. The service name is extracted dynamically — no config needed when monitors change.
 
-Se un servizio è down, il display mostra:
+When a service is down the display shows:
 
-```
+```text
   10:45
 ──────────────
   ALLARME
-  nome-monitor
+  service-name
     DOWN
 ```
 
-Il monitor seriale (`make monitor`) usa `python3 -m serial.tools.miniterm` (uscita con
-`Ctrl+]`). Dopo il flash, resettare fisicamente la board per vedere l'output dal boot.
+## MQTT and Home Assistant
 
-## MQTT e Home Assistant
+The device publishes to:
 
-Il dispositivo pubblica su:
-
-| Topic | Contenuto |
+| Topic | Payload |
 | --- | --- |
 | `notifier/sensor` | `{"temperature": 23.4, "humidity": 56.1}` |
 | `homeassistant/sensor/notifier/temperature/config` | Discovery payload (retained) |
 | `homeassistant/sensor/notifier/humidity/config` | Discovery payload (retained) |
 
-Con l'auto-discovery attivo su Home Assistant, le entità `Notifier Temperature`
-e `Notifier Humidity` vengono create automaticamente al primo avvio.
+With auto-discovery enabled in Home Assistant, the `Notifier Temperature` and
+`Notifier Humidity` entities are created automatically on first boot.
 
-## Licenza
+## License
 
-Vedi [LICENSE.txt](LICENSE.txt).
+See [LICENSE.txt](LICENSE.txt).
