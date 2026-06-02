@@ -1,0 +1,12 @@
+#pragma once
+
+// WiFi credentials
+#define WIFI_SSID     "your_ssid"
+#define WIFI_PASSWORD "your_password"
+
+// MQTT broker
+#define MQTT_HOST      "192.168.1.x"
+#define MQTT_PORT      1883
+#define MQTT_CLIENT_ID "notifier"
+#define MQTT_USER      ""
+#define MQTT_PASS      ""
