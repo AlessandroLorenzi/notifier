@@ -4,6 +4,9 @@
 #define WIFI_SSID     "your_ssid"
 #define WIFI_PASSWORD "your_password"
 
+// Temperature calibration offset (°C). Subtract to correct sensor self-heating.
+#define TEMP_OFFSET_C  0.0f
+
 // MQTT broker
 #define MQTT_HOST      "192.168.1.x"
 #define MQTT_PORT      1883

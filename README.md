@@ -37,7 +37,7 @@ Every 60 seconds:
 5. Updates the display: shows temp/humidity normally, or an alert if a service is down
 6. Enters light sleep for 60 seconds
 
-A full e-paper refresh runs every 10 cycles to prevent ghosting; other cycles use partial refresh.
+A full e-paper refresh runs every 5 cycles to prevent ghosting; other cycles use partial refresh.
 
 ## Configuration
 

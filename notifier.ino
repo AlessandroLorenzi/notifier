@@ -28,7 +28,7 @@
 #define SPI_CLOCK_HZ        4000000
 #define SLEEP_SECONDS       60
 #define WIFI_TIMEOUT_MS     15000
-#define FULL_REFRESH_EVERY  10
+#define FULL_REFRESH_EVERY  5
 #define NTP_TIMEOUT_MS      10000
 #define NTP_TIMEZONE        "CET-1CEST,M3.5.0,M10.5.0/3"
 
@@ -298,7 +298,7 @@ bool readSensor(float& outTempC, float& outHumPct)
   }
   if (!ok) return false;
 
-  outTempC  = tempEvent.temperature;
+  outTempC  = tempEvent.temperature + TEMP_OFFSET_C;
   outHumPct = humEvent.relative_humidity;
   return true;
 }
